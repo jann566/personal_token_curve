@@ -25,6 +25,7 @@ let bumpSeed: number;
 let owner: Account;
 // Token pool
 let tokenPool: Token;
+
 let tokenAccountPool: PublicKey;
 let feeAccount: PublicKey;
 // Tokens swapped

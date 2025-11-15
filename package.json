@@ -21,7 +21,6 @@
   "engines": {
     "node": ">=10"
   },
-  "dependencies": {},
   "devDependencies": {
     "@project-serum/anchor": "0.20.1",
     "@solana/spl-token": "^0.1.8",
