@@ -1,17 +1,15 @@
 import { Request, Response } from "express";
 import { User } from "../models/userModel";
-import { generateToken } from "../utils/tokenGenerator";
+import { generateToken } from "../utils/generateToken";
 
-// Admin: alle User abrufen
 export const getAllUsers = (req: Request, res: Response) => {
     return res.json(User);
 };
 
-// Admin: User genehmigen + Token generieren
 export const approveUser = (req: Request, res: Response) => {
     const { id, userId } = req.body;
 
-    // sowohl id als auch userId unterstützen
+    // akzeptiert beide
     const finalId = id || userId;
 
     if (!finalId) {
@@ -24,10 +22,12 @@ export const approveUser = (req: Request, res: Response) => {
         return res.status(404).json({ message: "User wurde nicht gefunden" });
     }
 
-    // Token generieren (mit 2 Parametern!)
-    const token = generateToken(user.id, user.name);
+    // Token generieren
+    const token = generateToken({
+        id: user.id,
+        name: user.name
+    });
 
-    // User speichern
     user.token = token;
 
     return res.json({
