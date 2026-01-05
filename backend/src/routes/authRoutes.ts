@@ -1,21 +1,11 @@
 import { Router } from "express";
-import multer from "multer";
-import { registerUser } from "../controllers/authController";
-
-// Multer Setup
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage });
+import { upload } from "../middleware/upload";
+import { registerStep1, registerStep2, registerStep3 } from "../controllers/authController";
 
 const router = Router();
 
-// Registration Route
-router.post("/register", upload.single("file"), registerUser);
+router.post("/register/step1", registerStep1);
+router.post("/register/step2", upload.single("pdf"), registerStep2);
+router.post("/register/step3", registerStep3);
 
 export default router;

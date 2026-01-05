@@ -1,32 +1,62 @@
 import { Request, Response } from "express";
-import fs from "fs";
-import path from "path";
-import { IUser, User } from "../models/userModel";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { User } from "../models/userModel";
 
-// Erweiterte Typdefinition für req.file
-interface RegisterRequest extends Request {
-  file: Express.Multer.File;
-  body: {
-    name: string;
-  };
-}
+export const registerStep1 = async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
 
-export const registerUser = (req: RegisterRequest, res: Response) => {
-  const { name } = req.body;
-  const file = req.file;
+        const existing = await User.findOne({ email });
+        if (existing) return res.status(400).json({ message: "Email already registered" });
 
-  if (!name || !file) {
-    return res.status(400).json({ message: "Name und Datei sind erforderlich" });
-  }
+        const hashed = await bcrypt.hash(password, 10);
 
-  const newUser: IUser = {
-    id: Date.now().toString(),
-    name,
-    filePath: file.path,
-    token: null,
-  };
+        const user = await User.create({
+            email,
+            password: hashed,
+            registrationStep: 1
+        });
 
-  User.push(newUser);
+        res.json({ message: "Step 1 complete", userId: user._id });
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
 
-  res.status(201).json({ message: "User registriert", user: newUser });
+export const registerStep2 = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+        const file = req.file;
+
+        if (!file) return res.status(400).json({ message: "No PDF uploaded" });
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        user.idDocumentPath = file.path;
+        user.registrationStep = 2;
+        await user.save();
+
+        res.json({ message: "Step 2 complete" });
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+export const registerStep3 = async (req: Request, res: Response) => {
+    try {
+        const { userId, phantomWallet } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        user.phantomWallet = phantomWallet;
+        user.registrationStep = 3;
+        await user.save();
+
+        res.json({ message: "Registration complete" });
+    } catch (err) {
+        res.status(500).json(err);
+    }
 };

@@ -1,39 +1,66 @@
 import { Request, Response } from "express";
 import { User } from "../models/userModel";
-import { generateToken } from "../utils/generateToken";
+import { mintTokenForUser } from "../services/tokenMint";
 
-export const getAllUsers = (req: Request, res: Response) => {
-    return res.json(User);
+export const approveUser = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (user.registrationStep !== 3) {
+            return res.status(400).json({
+                message: "User is not fully registered",
+            });
+        }
+
+        if (!user.phantomWallet) {
+            return res.status(400).json({
+                message: "User has no Phantom wallet stored",
+            });
+        }
+
+        // Mint 0-supply token
+        const mintAddress = await mintTokenForUser(user.email);
+
+        user.mintAddress = mintAddress;
+        user.isApproved = true;
+        await user.save();
+
+        return res.json({
+            message: "User approved successfully",
+            mintAddress,
+        });
+
+    } catch (err) {
+        console.error("APPROVE ERROR:", err);
+        return res.status(500).json({
+            message: "Internal server error during approval",
+        });
+    }
 };
 
-export const approveUser = (req: Request, res: Response) => {
-    const { id, userId } = req.body;
-
-    // akzeptiert beide
-    const finalId = id || userId;
-
-    if (!finalId) {
-        return res.status(400).json({ message: "userId oder id ist erforderlich" });
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await User.find().sort({ createdAt: -1 });
+        return res.json(users);
+    } catch (err) {
+        console.error("GET USERS ERROR:", err);
+        return res.status(500).json({ message: "Error fetching users" });
     }
-
-    const user = User.find(u => u.id === finalId);
-
-    if (!user) {
-        return res.status(404).json({ message: "User wurde nicht gefunden" });
-    }
-
-    // Token generieren
-    const token = generateToken({
-        id: user.id,
-        name: user.name
-    });
-
-    user.token = token;
-
-    return res.json({
-        message: "User genehmigt",
-        user
-    });
 };
 
+export const getUserById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id);
 
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        return res.json(user);
+
+    } catch (err) {
+        return res.status(500).json({ message: "Error fetching user" });
+    }
+};
