@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel - Token Curve</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 1200px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #1f2937;
+      margin-bottom: 30px;
+      font-size: 2.5rem;
+      text-align: center;
+    }
+
+    .info-box {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      color: #374151;
+    }
+
+    .api-base-section {
+      margin-bottom: 20px;
+    }
+
+    .api-base-section label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #1f2937;
+    }
+
+    .api-base-section input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    thead {
+      background: #f9fafb;
+      border-bottom: 2px solid #d1d5db;
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
+    }
+
+    tr:hover {
+      background: #f9fafb;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status.pending {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .status.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.claimed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .wallet {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      max-width: 300px;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #5568d3;
+    }
+
+    button:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .refresh-btn {
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+      font-size: 16px;
+    }
+
+    .error {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      color: #166534;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Admin Panel</h1>
+
+    <div class="info-box">
+      <p>
+        <strong>Private Admin Interface</strong> — Do not share this link. Access only for authorized administrators.
+      </p>
+      <p style="margin-top: 10px; font-size: 14px;">
+        Backend must be running at: <code id="apiBaseDisplay">http://localhost:5000</code>
+      </p>
+    </div>
+
+    <div class="api-base-section">
+      <label for="apiBase">API Base URL:</label>
+      <input
+        type="text"
+        id="apiBase"
+        value="http://localhost:5000"
+        placeholder="http://localhost:5000"
+      />
+    </div>
+
+    <div id="message"></div>
+
+    <button class="refresh-btn" onclick="loadUsers()">🔄 Refresh Users</button>
+
+    <div id="content"></div>
+  </div>
+
+  <script>
+    let apiBase = 'http://localhost:5000';
+
+    // Update API base on input change
+    document.getElementById('apiBase').addEventListener('change', (e) => {
+      apiBase = e.target.value.trim();
+      localStorage.setItem('adminApiBase', apiBase);
+      loadUsers();
+    });
+
+    // Restore API base from localStorage
+    const savedApiBase = localStorage.getItem('adminApiBase');
+    if (savedApiBase) {
+      apiBase = savedApiBase;
+      document.getElementById('apiBase').value = apiBase;
+    }
+
+    async function loadUsers() {
+      const content = document.getElementById('content');
+      const message = document.getElementById('message');
+      message.innerHTML = '';
+      content.innerHTML = '<div class="loading">Loading users...</div>';
+
+      try {
+        const response = await fetch(`${apiBase}/admin/users`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const users = await response.json();
+        const usersArray = Array.isArray(users) ? users : Object.values(users);
+
+        if (usersArray.length === 0) {
+          content.innerHTML = '<p style="color: #6b7280; text-align: center;">No users registered yet.</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Phantom Wallet</th>
+                <th>Minted</th>
+                <th>Claimed</th>
+                <th>Registered</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        usersArray.forEach((user) => {
+          const statusClass = user.claimed ? 'claimed' : user.isApproved ? 'approved' : 'pending';
+          const statusText = user.claimed ? 'Claimed' : user.isApproved ? 'Approved' : 'Pending';
+          const walletDisplay = user.phantomWallet ? user.phantomWallet.substring(0, 16) + '...' : '—';
+          const date = new Date(user.createdAt).toLocaleDateString();
+          const isEligible = user.registrationStep === 3 && !user.isApproved;
+
+          html += `
+            <tr>
+              <td><strong>${escapeHtml(user.email)}</strong></td>
+              <td><span class="status ${statusClass}">${statusText}</span></td>
+              <td class="wallet" title="${user.phantomWallet || ''}">${walletDisplay}</td>
+              <td>${user.minted ? '✅' : '—'}</td>
+              <td>${user.claimed ? '✅' : '—'}</td>
+              <td>${date}</td>
+              <td class="button-group">
+                ${
+                  isEligible
+                    ? `<button onclick="approveUser('${user._id}')">Approve</button>`
+                    : `<span style="color: #9ca3af;">${user.isApproved ? 'Approved' : 'Not eligible'}</span>`
+                }
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `
+            </tbody>
+          </table>
+        `;
+
+        content.innerHTML = html;
+      } catch (err) {
+        message.innerHTML = `<div class="error">❌ Error: ${escapeHtml(err.message)}</div>`;
+        content.innerHTML = '';
+      }
+    }
+
+    async function approveUser(userId) {
+      const message = document.getElementById('message');
+      message.innerHTML = '';
+
+      try {
+        const response = await fetch(`${apiBase}/admin/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        message.innerHTML = `<div class="success">✅ User approved! Mint created: ${escapeHtml(data.mintAddress)}</div>`;
+
+        // Reload users
+        setTimeout(loadUsers, 500);
+      } catch (err) {
+        message.innerHTML = `<div class="error">❌ Error: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load users on page load
+    loadUsers();
+  </script>
+</body>
+</html>

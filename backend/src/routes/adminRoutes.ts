@@ -1,12 +1,10 @@
 import { Router } from "express";
-import { getAllUsers, approveUser } from "../controllers/adminController";
+import { approveUser, getAllUsers, getUserById } from "../controllers/adminController";
 
 const router = Router();
 
-// Route: alle registrierten User (Admin)
 router.get("/users", getAllUsers);
-
-// Route: User genehmigen + Token generieren
+router.get("/users/:id", getUserById);
 router.post("/approve", approveUser);
 
 export default router;

@@ -1,0 +1,19 @@
+[features]
+seeds = true
+skip-lint = false
+
+[programs.localnet]
+hub_mm = "BkG5yURdmMvDdHYJSZ7EYCgVnHVAs3hK8ppakVVqvwZL"
+
+[programs.devnet]
+hub_mm = "BkG5yURdmMvDdHYJSZ7EYCgVnHVAs3hK8ppakVVqvwZL"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p tsconfig.json -t 1000000 \"tests/**/*.ts\""

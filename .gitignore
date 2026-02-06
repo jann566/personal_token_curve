@@ -4,3 +4,26 @@
 target
 **/*.rs.bk
 node_modules
+
+# Editor
+.vscode/
+
+# Backend build & runtime
+backend/dist/
+backend/uploads/
+backend/test-ledger/
+
+# Backups
+*.bak
+
+# Ignore any local ledgers / snapshots anywhere
+**/test-ledger/
+**/ledger/
+**/*.sst
+**/rocksdb/
+**/snapshots/
+**/*.log
+
+# Secrets / local artifacts
+backend/id.json
+*.pdf

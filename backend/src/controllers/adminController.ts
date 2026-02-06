@@ -1,39 +1,54 @@
 import { Request, Response } from "express";
 import { User } from "../models/userModel";
-import { generateToken } from "../utils/generateToken";
+import { approveUserFlow } from "../services/flows/approveUser";
 
-export const getAllUsers = (req: Request, res: Response) => {
-    return res.json(User);
-};
+export const approveUser = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body as { userId?: string };
+    if (!userId) return res.status(400).json({ message: "userId missing" });
 
-export const approveUser = (req: Request, res: Response) => {
-    const { id, userId } = req.body;
+    const user: any = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // akzeptiert beide
-    const finalId = id || userId;
-
-    if (!finalId) {
-        return res.status(400).json({ message: "userId oder id ist erforderlich" });
+    if (user.registrationStep !== 3) {
+      return res.status(400).json({ message: "User is not fully registered" });
     }
 
-    const user = User.find(u => u.id === finalId);
-
-    if (!user) {
-        return res.status(404).json({ message: "User wurde nicht gefunden" });
+    if (!user.phantomWallet) {
+      return res.status(400).json({ message: "User has no Phantom wallet stored" });
     }
 
-    // Token generieren
-    const token = generateToken({
-        id: user.id,
-        name: user.name
-    });
-
-    user.token = token;
+    const result = await approveUserFlow({ userId: String(user._id) });
 
     return res.json({
-        message: "User genehmigt",
-        user
+      message: "User approved (mint created). User must claim tokens.",
+      ...result,
     });
+  } catch (err: any) {
+    console.error("APPROVE ERROR:", err);
+    return res.status(500).json({ message: err?.message ?? "Internal server error" });
+  }
 };
 
+export const getAllUsers = async (_req: Request, res: Response) => {
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    return res.json(users);
+  } catch (err) {
+    console.error("GET USERS ERROR:", err);
+    return res.status(500).json({ message: "Error fetching users" });
+  }
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json(user);
+  } catch (err) {
+    console.error("GET USER ERROR:", err);
+    return res.status(500).json({ message: "Error fetching user" });
+  }
+};
 
